@@ -89,6 +89,14 @@
 			more: false,
 			radius: 1,
 			level: 50,
+			region: {
+				left: 0,
+				top: 0,
+				width: null,
+				height: null,
+				right: 0,
+				bottom: 0
+			},
 			
 			channels: {
 				red: true,
@@ -193,6 +201,22 @@
 			}
 		}
 
+		function getRegion(sc) {
+			var r = oOptions.region;
+			var xs = r.left;
+			var ys = r.top;
+			var xe = r.width !== null ? xs + r.width - 1 : null;
+			var ye = r.height !== null ? ys + r.height - 1 : null;
+			xe = xe !== null ? xe : sc.width - r.left - 1;
+			ye = ye !== null ? ye : sc.height - r.right - 1;
+			return {
+				xs: xs,
+				ys: ys,
+				xe: xe,
+				ye: ye
+			};
+		}
+		
 		/**
 		 * Get a color structure of the given pixel
 		 * if a color structure is specified, the function will fill this
@@ -236,8 +260,9 @@
 			var bCha = Ch.alpha;
 			var factor = oOptions.factor;
 			var bias = oOptions.bias;
-			for (y = 0; y < h; ++y) {
-				for (x = 0; x < w; ++x) {
+			var r = getRegion(sc);
+			for (y = r.ys; y <= r.ye; ++y) {
+				for (x = r.xs; x <= r.xe; ++x) {
 					getPixel(sc, x, y, p);
 					r.r = p.r;
 					r.g = p.g;
@@ -269,6 +294,14 @@
 				p.r = f * (p.r - 128) + 128;
 				p.g = f * (p.g - 128) + 128;
 				p.b = f * (p.b - 128) + 128;
+			});
+		}
+
+		function filterNegate(oImage) {
+			pixelFilter(oImage, function(sc, x, y, p) {
+				p.r = 255 - p.r;
+				p.g = 255 - p.g;
+				p.b = 255 - p.b;
 			});
 		}
 		
@@ -325,8 +358,11 @@
 			var bChr = Ch.red;
 			var bChg = Ch.green;
 			var bChb = Ch.blue;
-			for (y = 0; y < h; ++y) {
-				for (x = 0; x < w; ++x) {
+			var nTimeStart = Date.now();
+			var nTime8, nTimeEstim;
+			var r = getRegion(scs);
+			for (y = r.ys; y <= r.ye; ++y) {
+				for (x = r.xs; x <= r.xe; ++x) {
 					getPixel(scs, x, y, nc);
 					if (bChr) {
 						nc.r = 0;
@@ -366,8 +402,16 @@
 					}
 					setPixel(scd, x, y, nc);
 				}
+				if (y === 16) {
+					nTime8 = Date.now() - nTimeStart;
+					nTimeEstim = nTime8 * h / y | 0;
+					$(oImage).trigger(sPluginName + '.time', {
+						filter: oOptions.command,
+						etc: nTimeEstim
+					});
+				}
 			}
-			commitShadowCanvas(scd);			
+			commitShadowCanvas(scd);
 		}
 		
 		/**
@@ -416,12 +460,19 @@
 			var $img = $(oImage);
 			$img.data(DATA_BACKUP, $img.attr('src'));
 		}
+		
+		function jpeg(oImage) {
+			var scs = buildShadowCanvas(oImage);
+			var sJPEG = scs.canvas.toDataURL('image/jpeg', oOptions.factor);
+			scs.image.src = sJPEG;
+		}
 
 		/**
 		 * main function
 		 * analyzes options.command and run the corresponding filter
 		 */
 		function main() {
+			var nStart = Date.now();
 			var $this = $(this);
 			switch (oOptions.command) {
 				case 'blur':
@@ -531,6 +582,10 @@
 					filterContrast(this);
 				break;
 
+				case 'negate':
+					filterNegate(this);
+				break;
+
 				/**
 				 * Save the image src attribute value
 				 * Usefull in combination with the 'restore' command
@@ -547,8 +602,18 @@
 				case 'restore':
 					restore(this);
 				break;
+				
+				/**
+				 * Convert the image in JPEG format
+				 * use 'factor' to set the quality level between 0 and 1
+				 */
+				case 'jpeg':
+					jpeg(this);
+				break;
 
 			}
+			var nTime = Date.now() - nStart;
+			$this.trigger(sPluginName + '.complete', {filter: oOptions.command, time: nTime});
 		};
 
 		return this.each(main);
