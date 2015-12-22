@@ -1,0 +1,33 @@
+div.application {
+	padding: 8px;
+	background-color: #AAA;
+	border: outset thin #AAA;
+}
+
+div.source {
+	float: left;
+	margin-right: 8px;
+}
+
+div.source progress {
+	width: 100%;
+	visibility: hidden;
+}
+
+div.source span.filtername {
+	font-family: monospace;
+	font-weight: bold;
+}
+
+div.toolbar button.command {
+	width: 96px;
+}
+
+div.example textarea {
+	font-size: 85%;
+}
+
+div.example div.title {
+	font-family: monospace;
+	font-weight: bold;
+}

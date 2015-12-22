@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<link rel="stylesheet" href="styles.css" />
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+		<script src="../lib/philter.js"></script>
+		<script src="main.js"></script>
+	</head>
+	<body>
+		<div class="application">
+			<div class="source">
+				<img class="source" src="images/source.jpg"/><br />
+				<span class="filtername"></span><br />
+				<progress value="0" max="100"></progress>
+			</div>
+			<div class="toolbar">
+				<button class="command" data-command="restore">restore</button>
+				<button class="command" data-command="blur">blur 1px</button>
+				<button class="command" data-command="blur4">blur 4px</button>
+				<button class="command" data-command="blur8">blur 8px</button>
+				<button class="command" data-command="sharpen">sharpen</button>
+				<button class="command" data-command="sharpenmore">sharpen+</button>
+				<button class="command" data-command="emboss">emboss</button>
+				<button class="command" data-command="embossmore">emboss+</button>
+				<button class="command" data-command="edges">edges</button>
+				<button class="command" data-command="grayscale">grayscale</button>
+				<button class="command" data-command="sepia">sepia</button>
+				<button class="command" data-command="brightness150">bright.+50%</button>
+				<button class="command" data-command="brightness50">bright.-50%</button>
+				<button class="command" data-command="noise">noise</button>
+				<button class="command" data-command="contrast">contrast</button>
+				<button class="command" data-command="negate">negate</button>
+			</div>
+			<div class="example">
+				<hr/>
+				<div class="title">code:</div>
+				<textarea readonly="readonly" cols="80" rows="10"></textarea>
+			</div>
+			<br style="clear: both"/>
+		</div>
+	</body>
+</html>
