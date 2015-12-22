@@ -1,8 +1,8 @@
 # Philter
 Author: Raphael Marandet
 
-Philter is a Jquery plugin that provides various image processing filters, like blur, sharpen, emboss, edge detection.
-The plugin works with images or canvases.
+Philter is a **JQuery** plugin and provides various image processing filters, like blur, sharpen, emboss, edge detection.
+The plugin works both on images and canvases.
 
 ## Why a jquery plugin ?
 Philter development has started on 2015-12-16. Which means that at the moment, the CSS counterpart of filter effects is still experimental.
@@ -31,7 +31,7 @@ This will run a level 100 contrast filter on the first image of the document :
 
 
 ## Filters
-Here is a list of filters provided by the Philter plugin. Each filter has its own set of options. There are filter-specific options and general options (common to some or all filters)
+Here is a list of filters provided by the Philter plugin. Each filter has its own set of options. There are filter-specific options and general options (common to some or all filters).
 
 ### blur
 - blurs the image
@@ -42,14 +42,14 @@ Here is a list of filters provided by the Philter plugin. Each filter has its ow
 - if the *more* option is set to true, the sharpen effect will be greater, showing edges excessively.
 
 ### emboss
-- give some sort of 3D shadow effect to the image, good for creating bump maps
+- gives some sort of 3D shadow effect to the image, good for creating bump maps
 - if the *more* option is set to true, the emboss effect will be greater.
 
 ### edges
-- apply edge detection filter, the image will be darken, but the edges of shapes will be enlightened
+- applies edge detection filter, the image will be darken, but the edges of shapes will be enlightened
 
 ### resize
-- resize the image, changing its dimension
+- resizes the image, changing its dimension
 - use *width* and *height* options to specify new size in pixels.
 - example : `$('img').philter('resize', {width:64, height: 64});`
 
@@ -74,12 +74,17 @@ Here is a list of filters provided by the Philter plugin. Each filter has its ow
 - use *level* option (default value : 50) to control the amount of noise
 
 ### contrast
-- adjust image contrast
+- adjusts image contrast
 - use *level* option (default value : 50) to control the amount of contrast
 - negative values of *level* will decrease contrast
 
 ### negate
 - negates the color of all pixels
+
+### sample
+- get the color of all pixels
+- use *result* option to callback the result.
+- example : `$('img').philter('sample', {result: function(image, statistics) { console.log(statistics); }});`
 
 
 ## Color channels
@@ -89,7 +94,7 @@ There are two notations for the channels option
 - the **object** notation : {red: boolean, green: boolean, blue: boolean, alpha: boolean}
 - the **string** notation : a string containing one or more characters : "r", "g", "b" and "a"
 
-###examples :
+### examples :
 `$('img').philter('brightness', {factor: 2, channels: {red: true, green: false, blue: false}});`
 will only lighten the "red" channel
 

@@ -489,9 +489,33 @@
 			var sJPEG = sc.canvas.toDataURL('image/jpeg', opt.factor);
 			setImageSource(sc.image, sJPEG, pDone);
 		}
+		
+		function sample(sc, pDone) {
+			var aStat = {};
+			pixelFilter(sc, function(sc, x, y, p) {
+				var aKey = [(p.r < 16 ? '0' : '') + p.r.toString(16), (p.g < 16 ? '0' : '') + p.g.toString(16), (p.b < 16 ? '0' : '') + p.b.toString(16)];
+				var sKey = '#' + aKey.join('');
+				if (!(sKey in aStat)) {
+					aStat[sKey] = [sKey, 0];
+				}
+				++aStat[sKey][1];
+			}, function(sc) {
+				var aResult = [];
+				for (var sStat in aStat) {
+					aResult.push(aStat[sStat]);
+				}
+				aResult.sort(function(a, b) {
+					return b[1] - a[1];
+				});
+				if (typeof sc.options.result === 'function') {
+					sc.options.result(sc.image, aResult);
+				}
+				pDone(sc);
+			});
+		}
 
 		function debug() {
-			//console.log.apply(console, arguments);
+			console.log.apply(console, arguments);
 		}
 		
 		function process(oImage, opt) {
@@ -635,8 +659,7 @@
 				 * to undo any changes
 				 */
 				case 'save':
-					save(sc);
-					triggerComplete();
+					save(sc, triggerComplete);
 				break;
 
 				/**
@@ -644,8 +667,7 @@
 				 * Must be called after a 'save' operation
 				 */
 				case 'restore':
-					restore(sc);
-					triggerComplete();
+					restore(sc, triggerComplete);
 				break;
 				
 				/**
@@ -653,10 +675,23 @@
 				 * use 'factor' to set the quality level between 0 and 1
 				 */
 				case 'jpeg':
-					jpeg(sc);
-					triggerComplete();
+					jpeg(sc, triggerComplete);
 				break;
-
+				
+				
+				case 'sample':
+					sample(sc, triggerComplete);
+				break;
+				
+				case 'mean':
+					opt.matrix = [
+						[1, 1, 1], 
+						[1, 1, 1], 
+						[1, 1, 1]
+					];
+					opt.factor = 1/9;
+					filterConvolution(sc, commit);
+				break;
 			}
 		}
 		

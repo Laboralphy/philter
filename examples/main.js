@@ -90,9 +90,6 @@ function main() {
 		$progress.css('visibility', 'visible');
 	});
 	$img.philter('save');
-	$img.on('philter.debug', function(e, s) {
-		//console.log(s);
-	});
 }
 
 $(window).on('load', main);
