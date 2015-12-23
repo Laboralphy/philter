@@ -81,8 +81,8 @@
 		 */
 		function buildShadowCanvas(oImage, opt) {
 			var $canvas = $('<canvas></canvas>');
-			var w = oImage.width;
-			var h = oImage.height;
+			var w = oImage.naturalWidth;
+			var h = oImage.naturalHeight;
 			var oCanvas = $canvas.get(0);
 			oCanvas.width = w;
 			oCanvas.height = h;
@@ -134,12 +134,14 @@
 			var oImage = sc.image;
 			var $image = $(oImage);
 			if ($image.is('img')) {
-				setImageSource(oImage, sc.canvas.toDataURL(), pDone);
+				setImageSource(oImage, sc.canvas.toDataURL(), function() {
+					pDone(sc);
+				});
 			} else {
 				var ctx = oImage.getContext('2d');
 				ctx.drawImage(sc.canvas, 0, 0);
 				if (typeof pDone === 'function') {
-					pDone(oImage);
+					pDone(sc);
 				}
 			}
 		}
@@ -442,14 +444,15 @@
 			var opt = getImageOptions(sc);
 			var w = opt.width;
 			var h = opt.height;
-			sc.canvas.width = w;
-			sc.canvas.height = h;
-			sc.context = sc.canvas.getContext('2d');
-			sc.context.drawImage(sc.image, 0, 0, sc.width, sc.height, 0, 0, w, h);
-			sc.width = w;
-			sc.height = h;
+			var scd = buildShadowCanvas(sc.image);
+			scd.canvas.width = w;
+			scd.canvas.height = h;
+			scd.context = scd.canvas.getContext('2d');
+			scd.context.drawImage(sc.image, 0, 0, sc.width, sc.height, 0, 0, w, h);
+			scd.width = w;
+			scd.height = h;
 			if (typeof pDone === 'function') {
-				pDone(sc);
+				pDone(scd);
 			}
 		}
 		
@@ -515,7 +518,7 @@
 		}
 
 		function debug() {
-			console.log.apply(console, arguments);
+			//console.log.apply(console, arguments);
 		}
 		
 		function process(oImage, opt) {

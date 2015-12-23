@@ -62,6 +62,28 @@ var COMMANDS = {
 	negate: function() {
 		$('img.source').philter('negate');
 	},
+	
+	sample: function() {
+		$('img.source').philter('sample', {result: function(image, stat) {
+			var nPix = image.width * image.height;
+			var nMax = stat.reduce(function(nPrev, n) {
+				return Math.max(nPrev, n[1]);
+			}, 0);
+			var oCanvas = $('<canvas width="512" height="256"></canvas>').get(0);
+			var nHeight = oCanvas.height;
+			var nWidth = oCanvas.width;
+			var oContext = oCanvas.getContext('2d');
+			stat.map(function(n) {
+				return [n[0], nHeight * n[1] / nMax | 0];
+			}).filter(function(n, i) {
+				return i < nWidth;
+			}).forEach(function(n, i) {
+				oContext.fillStyle = n[0];
+				oContext.fillRect(i, 256 - n[1], 1, n[1]);
+			});			
+			$('body').append(oCanvas);
+		}});
+	}
 };
 
 function main() {
