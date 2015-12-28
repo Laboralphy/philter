@@ -1,7 +1,7 @@
 # Philter
 Author: Raphael Marandet
 
-Philter is a **JQuery** plugin and provides various image processing filters, like blur, sharpen, emboss, edge detection.
+Philter is a **JQuery plugin** and provides various image processing filters, like blur, sharpen, emboss, edge detection.
 The plugin works both on images and canvases.
 
 ## Why a jquery plugin ?
@@ -86,6 +86,10 @@ Here is a list of filters provided by the Philter plugin. Each filter has its ow
 - use *result* option to callback the result.
 - example : `$('img').philter('sample', {result: function(image, statistics) { console.log(statistics); }});`
 
+### hsl
+- adjust hue, saturation and lightness of an image.
+- use *hue*, *saturation* and *lightness* options with values between -1 and 1. 
+
 
 ## Color channels
 for pixel transformation filters like blur, sharpen, emboss, brightness... you can use the special option *channels* to specify what color (or alpha) channel will be affected.
@@ -109,20 +113,81 @@ an important thing to keep in mind is that Philter works in an asynchronous way.
 
 ### The *start*, *progress* and *complete* custom events
 Philter triggers various custom events for each images being processed. You must attach event handlers on images.
-`$('img').on('philter.complete', function(oEvent, data) {
+```javascript
+$('img').on('philter.complete', function(oEvent, data) {
 	console.log('filter', data.filter, 'has been applied in', data.time, 'milliseconds');
-});`
-`$('img').on('philter.progress', function(oEvent, data) {
+});
+$('img').on('philter.progress', function(oEvent, data) {
 	console.log('filter', data.filter, 'is', data.f, '% done');
-});`
+});
+```
 
 
 ## Chaining filters
 You may declare several filters in a row. They will be queued are run one after another.
-```
+```javascript
 $('img')
 	.philter('blur', {radius: 8})
 	.philter('negate')
 	.philter('contrast', {level: 30})
 	.philter('brightness', {factor: 1.3});
+```
+
+## Custom filter
+One can simply declare new filters.
+
+### the filter function
+First you should create a filter function :
+```javascript
+var myFilter = function(sc, oMethods) {
+	....
+});
+```
+this function must accept two parameters
+- an object called "shadow canvas" which is a structure embedding the target image currently being processed.
+- an object containing several usefull methods to process image
+
+### the declaration
+Just call *philter* with the proper parameters : 
+- a name for the new filter
+- the function
+
+### example
+This example shows how to create a simple filter. This one fills images with random colored pixels.
+```javascript
+$(window).philter('random', function(sc, oMethods) {
+	oMethods.pixelProcess(sc, function(sc, x, y, p) {
+		p.r = Math.random() * 256 | 0;
+		p.g = Math.random() * 256 | 0;
+		p.b = Math.random() * 256 | 0;
+	}, oMethods.commit);
+});
+```
+
+Another example. This one makes every odd pixel lines disapear.
+```javascript
+$(window).philter('scanline', function(sc, oMethods) {
+	oMethods.pixelProcess(sc, function(sc, x, y, pixel) {
+		if (y & 1) {
+			pixel.a = 0;
+		}
+	}, oMethods.commit);
+});
+```
+	
+Another example. This one makes a simple pixelate effect.
+```javascript
+$(window).philter('pixelate', function(sc, oMethods) {
+	scd = oMethods.buildShadowCanvas(sc.image);
+	scd = oMethods.buildShadowCanvas(sc.image);
+	scd.context.mozImageSmoothingEnabled = true;
+	sc.context.mozImageSmoothingEnabled = false;
+	scd.context.webkitImageSmoothingEnabled = true;
+	sc.context.webkitImageSmoothingEnabled = false;
+	var w = sc.options.width || 1;
+	var h = sc.options.height || 1;
+	scd.context.drawImage(sc.canvas, 0, 0, sc.width, sc.height, 0, 0, sc.width / w | 0, sc.height / h | 0);
+	sc.context.drawImage(scd.canvas, 0, 0, sc.width / w | 0, sc.height / h | 0, 0, 0, sc.width, sc.height);
+	oMethods.commit(sc);
+});
 ```

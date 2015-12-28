@@ -63,6 +63,10 @@ var COMMANDS = {
 		$('img.source').philter('negate');
 	},
 	
+	hsl: function() {
+		$('img.source').philter('hsl', {hue: 0.2, saturation: 0.1, lightness: 0.1});
+	},
+	
 	sample: function() {
 		$('img.source').philter('sample', {result: function(image, stat) {
 			var nPix = image.width * image.height;

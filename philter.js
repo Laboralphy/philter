@@ -10,6 +10,7 @@
 	var PLUGIN_NAME = 'philter';
 	var BUSY_VAR = PLUGIN_NAME + '_busy';
 	var oPlugin = {};
+	var oFilters = {};
 	oPlugin[PLUGIN_NAME] = function(p1, p2) {
 		var oDefaults = {
 			matrix: [[0, 0, 0], [0, 1, 0], [0, 0, 0]],
@@ -54,6 +55,11 @@
 			
 			case 'ou': // one object
 				oOptions = p1;
+			break;
+			
+			case 'sf': // define new filter
+				oFilters[p1] = p2;
+				return;
 			break;
 			
 			default:
@@ -211,14 +217,14 @@
 			}
 		}
 
-		function pixelFilter(sc, pFunc, pDone, oAsyncContext) {
+		function pixelProcess(sc, pFunc, pDone, oAsyncContext) {
 			var x, y, p = {}, r = {};
 			if (!oAsyncContext) {
 				oAsyncContext = {
 					xs: 0,
 					ys: 0,
 					resume: function() {
-						pixelFilter(sc, pFunc, pDone, oAsyncContext);
+						pixelProcess(sc, pFunc, pDone, oAsyncContext);
 					}
 				};
 			}
@@ -240,10 +246,6 @@
 			for (y = Math.max(r.ys, oAsyncContext.ys); y <= r.ye; ++y) {
 				for (x = Math.max(r.xs, oAsyncContext.xs); x <= r.xe; ++x) {
 					getPixel(sc, x, y, p);
-					r.r = p.r;
-					r.g = p.g;
-					r.b = p.b;
-					r.a = p.a;
 					pFunc(sc, x, y, p);
 					if (bChr) {
 						r.r = Math.min(255, Math.max(0, factor * p.r + bias)) | 0;
@@ -261,7 +263,7 @@
 				}
 				if (!bSync && !(y & 7)) {
 					nTime8 = Date.now() - nTimeStart;
-					if (nTime8 >= nInterval) {
+					if (y === 0 || nTime8 >= nInterval) {
 						oAsyncContext.ys = y + 1;
 						var f = (y - r.ys) / (r.ye - r.ys);
 						$(sc.image).trigger(PLUGIN_NAME + '.progress', {
@@ -282,7 +284,7 @@
 			var opt = getImageOptions(sc);
 			var c = opt.level;
 			var f = (259 * (c + 255)) / (255 * (259 - c));
-			pixelFilter(sc, function(sc, x, y, p) {
+			pixelProcess(sc, function(sc, x, y, p) {
 				p.r = f * (p.r - 128) + 128;
 				p.g = f * (p.g - 128) + 128;
 				p.b = f * (p.b - 128) + 128;
@@ -290,7 +292,7 @@
 		}
 
 		function filterNegate(sc, pDone) {
-			pixelFilter(sc, function(sc, x, y, p) {
+			pixelProcess(sc, function(sc, x, y, p) {
 				p.r = 255 - p.r;
 				p.g = 255 - p.g;
 				p.b = 255 - p.b;
@@ -306,7 +308,7 @@
 			if (m[0].length < 3 || m[1].length < 3 || m[2].length < 3) {
 				throw new Error('color matrix must be 3x3 sized');
 			}
-			pixelFilter(sc, function(sc, x, y, p) {
+			pixelProcess(sc, function(sc, x, y, p) {
 				var r = (p.r * m[0][0] + p.g * m[0][1] + p.b * m[0][2]);
 				var g = (p.r * m[1][0] + p.g * m[1][1] + p.b * m[1][2]);
 				var b = (p.r * m[2][0] + p.g * m[2][1] + p.b * m[2][2]);
@@ -319,7 +321,7 @@
 		function filterNoise(sc, pDone) {
 			var opt = getImageOptions(sc);
 			var nAmount = opt.level;
-			pixelFilter(sc, function(sc, x, y, p) {
+			pixelProcess(sc, function(sc, x, y, p) {
 				var nb = nAmount * (Math.random() - 0.5);
 				p.r = Math.min(255, Math.max(0, p.r + nb)) | 0;
 				p.g = Math.min(255, Math.max(0, p.g + nb)) | 0;
@@ -336,7 +338,7 @@
 		 *  - factor
 		 * 	- bias
 		 */
-		function filterConvolution(scs, pDone, oAsyncContext) {
+		function convolutionProcess(scs, pDone, oAsyncContext) {
 			var x, y, p = {}, nc = {}, xyf;
 			var scd;
 			if (!oAsyncContext) {
@@ -346,7 +348,7 @@
 					xs: 0,
 					ys: 0,
 					resume: function() {
-						filterConvolution(scs, pDone, oAsyncContext);
+						convolutionProcess(scs, pDone, oAsyncContext);
 					}
 				};
 			} else {
@@ -445,12 +447,22 @@
 			var w = opt.width;
 			var h = opt.height;
 			var scd = buildShadowCanvas(sc.image);
-			scd.canvas.width = w;
-			scd.canvas.height = h;
+			var r = w.toString().match(/^([0-9]+)%$/);
+			if (r) {
+				scd.canvas.width = sc.width * (r[1] | 0) / 100 | 0;
+			} else {
+				scd.canvas.width = w;
+			}
+			r = h.toString().match(/^([0-9]+)%$/);
+			if (r) {
+				scd.canvas.height = sc.height * (r[1] | 0) / 100 | 0;
+			} else {
+				scd.canvas.height = h;
+			}
 			scd.context = scd.canvas.getContext('2d');
-			scd.context.drawImage(sc.image, 0, 0, sc.width, sc.height, 0, 0, w, h);
-			scd.width = w;
-			scd.height = h;
+			scd.context.drawImage(sc.image, 0, 0, sc.width, sc.height, 0, 0, scd.canvas.width, scd.canvas.height);
+			scd.width = scd.canvas.width;
+			scd.height = scd.canvas.height;
 			if (typeof pDone === 'function') {
 				pDone(scd);
 			}
@@ -495,7 +507,7 @@
 		
 		function sample(sc, pDone) {
 			var aStat = {};
-			pixelFilter(sc, function(sc, x, y, p) {
+			pixelProcess(sc, function(sc, x, y, p) {
 				var aKey = [(p.r < 16 ? '0' : '') + p.r.toString(16), (p.g < 16 ? '0' : '') + p.g.toString(16), (p.b < 16 ? '0' : '') + p.b.toString(16)];
 				var sKey = '#' + aKey.join('');
 				if (!(sKey in aStat)) {
@@ -516,9 +528,105 @@
 				pDone(sc);
 			});
 		}
+		
+		function filterHSL(sc, pDone) {
+			/**
+			 * Converts an RGB color value to HSL. Conversion formula
+			 * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
+			 * Assumes r, g, and b are contained in the set [0, 255] and
+			 * returns h, s, and l in the set [0, 1].
+			 *
+			 * @param   Number  r       The red color value
+			 * @param   Number  g       The green color value
+			 * @param   Number  b       The blue color value
+			 * @return  Array           The HSL representation
+			 */
+			function rgbToHsl(r, g, b){
+				r /= 255, g /= 255, b /= 255;
+				var max = Math.max(r, g, b), min = Math.min(r, g, b);
+				var h, s, l = (max + min) / 2;
+
+				if (max == min){
+					h = s = 0; // achromatic
+				} else {
+					var d = max - min;
+					s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+					switch(max){
+						case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+						case g: h = (b - r) / d + 2; break;
+						case b: h = (r - g) / d + 4; break;
+					}
+					h /= 6;
+				}
+
+				return [h, s, l];
+			}
+
+			// utility function used by hslToRgb
+			function hue2rgb(p, q, t){
+				if (t < 0) {
+					++t;
+				}
+				if (t > 1) {
+					--t;
+				}
+				if (t < 1 / 6) {
+					return p + (q - p) * 6 * t;
+				}
+				if (t < 1 / 2) {
+					return q;
+				}
+				if (t < 2 / 3) {
+					return p + (q - p) * (2/3 - t) * 6;
+				}
+				return p;
+			}
+			
+			/**
+			 * Converts an HSL color value to RGB. Conversion formula
+			 * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
+			 * Assumes h, s, and l are contained in the set [0, 1] and
+			 * returns r, g, and b in the set [0, 255].
+			 *
+			 * @param   Number  h       The hue
+			 * @param   Number  s       The saturation
+			 * @param   Number  l       The lightness
+			 * @return  Array           The RGB representation
+			 */
+			function hslToRgb(h, s, l) {
+				var r, g, b;
+
+				if (s === 0){
+					r = g = b = l; // achromatic
+				} else {
+					var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+					var p = 2 * l - q;
+					r = hue2rgb(p, q, h + 1/3);
+					g = hue2rgb(p, q, h);
+					b = hue2rgb(p, q, h - 1/3);
+				}
+				return [r * 255, g * 255, b * 255];
+			}
+			var opt = sc.options;
+			var hue = opt.hue || 0;
+			var saturation = opt.saturation || 0;
+			var lightness = opt.lightness || 0;
+
+			pixelProcess(sc, function(sc, x, y, pixel) {
+				var hsl = rgbToHsl(pixel.r, pixel.g, pixel.b);
+				var h = (hsl[0] + hue + 1) % 1;
+				var s = Math.min(1, Math.max(0, hsl[1] + saturation));
+				var l = Math.min(1, Math.max(0, hsl[2] + lightness));
+				h += hue;
+				var rgb = hslToRgb(h, s, l);
+				pixel.r = rgb[0];
+				pixel.g = rgb[1];
+				pixel.b = rgb[2];
+			}, pDone);
+		}
 
 		function debug() {
-			//console.log.apply(console, arguments);
+			console.log.apply(console, arguments);
 		}
 		
 		function process(oImage, opt) {
@@ -555,7 +663,7 @@
 					} else {
 						opt.matrix = buildGaussianBlurMatrix(Math.max(2, opt.radius) / 3);
 					}
-					filterConvolution(sc, commit);
+					convolutionProcess(sc, commit);
 				break;
 
 				case 'sharpen':
@@ -575,7 +683,7 @@
 						];
 						opt.factor = 1/8;
 					}
-					filterConvolution(sc, commit);
+					convolutionProcess(sc, commit);
 				break;
 				
 				case 'edges':
@@ -584,7 +692,7 @@
 						[-1,  8, -1], 
 						[-1, -1, -1] 
 					];
-					filterConvolution(sc, commit);
+					convolutionProcess(sc, commit);
 				break;
 				
 				case 'emboss':
@@ -601,7 +709,7 @@
 							[ 0,  1,  1]
 						];
 					}
-					filterConvolution(sc, commit);
+					convolutionProcess(sc, commit);
 				break;
 
 				case 'grayscale':
@@ -631,7 +739,7 @@
 				break;
 				
 				case 'matrix':
-					filterConvolution(sc, commit);
+					convolutionProcess(sc, commit);
 				break;
 				
 				case 'resize':
@@ -644,7 +752,7 @@
 						[0, 1, 0], 
 						[0, 0, 0]
 					];
-					filterConvolution(sc, commit);
+					convolutionProcess(sc, commit);
 				break;
 				
 				
@@ -693,7 +801,27 @@
 						[1, 1, 1]
 					];
 					opt.factor = 1/9;
-					filterConvolution(sc, commit);
+					convolutionProcess(sc, commit);
+				break;
+				
+				case 'hsl':
+					filterHSL(sc, commit);
+				break;
+				
+				default:
+					var oPublicMethods = {
+						buildShadowCanvas: buildShadowCanvas,
+						setImageSource: setImageSource,
+						setPixel: setPixel,
+						getPixel: getPixel,
+						getRegion: getRegion,
+						pixelProcess: pixelProcess,
+						convolutionProcess: convolutionProcess,
+						commit: commit
+					}
+					if (sFilter in oFilters) {
+						oFilters[sFilter](sc, oPublicMethods);
+					}
 				break;
 			}
 		}
