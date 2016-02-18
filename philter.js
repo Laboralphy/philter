@@ -373,6 +373,7 @@
 			var r = getRegion(scs);
 			var nInterval = opt.interval;
 			var bSync = opt.sync;
+			console.time('convo');
 			for (y = Math.max(r.ys, oAsyncContext.ys); y <= r.ye; ++y) {
 				for (x = Math.max(r.xs, oAsyncContext.xs); x <= r.xe; ++x) {
 					getPixel(scs, x, y, nc);
@@ -426,6 +427,8 @@
 							f: f
 						});
 						requestAnimationFrame(oAsyncContext.resume);
+						console.timeEnd('convo');
+						
 						return;
 					}
 				}
@@ -433,6 +436,7 @@
 			if (typeof pDone === 'function') {
 				pDone(scd);
 			}
+			console.timeEnd('convo');
 		}
 		
 		/**
