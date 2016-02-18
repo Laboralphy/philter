@@ -8,7 +8,7 @@
  */
 (function ($) {
 	var PLUGIN_NAME = 'philter';
-	var BUSY_VAR = PLUGIN_NAME + '_busy';
+	var BUSY_VAR = ''; //PLUGIN_NAME + '_busy';
 	var oPlugin = {};
 	var oFilters = {};
 	oPlugin[PLUGIN_NAME] = function(p1, p2) {
@@ -20,7 +20,7 @@
 			radius: 1,
 			level: 50,
 			interval: 200,
-			sync: false,
+			sync: true,
 			region: {
 				left: 0,
 				top: 0,
@@ -75,7 +75,18 @@
 			};
 		}
 		oOptions = $.extend(true, oDefaults, oOptions);
-		
+
+		var now;
+		if ('performance' in window) {
+			now = function() {
+				return performance.now();
+			};
+		} else {
+			now = function() {
+				return Date.now();
+			};
+		}
+
 		
 		/**
 		 * builds a canvas and copy the given image content inside this canvas
@@ -97,7 +108,7 @@
 			var imgdata = ctx.getImageData(0, 0, w, h);
 			var data = new Uint32Array(imgdata.data.buffer);
 			
-			return {
+			var oSC = {
 				options: opt,
 				image: oImage,
 				canvas: oCanvas,
@@ -109,6 +120,7 @@
 				height: h,
 				_p: false
 			};
+			return oSC;
 		}
 		
 		
@@ -238,7 +250,7 @@
 			var bCha = Ch.alpha;
 			var factor = opt.factor;
 			var bias = opt.bias;
-			var nTimeStart = Date.now();
+			var nTimeStart = now();
 			var nTime8;
 			var nInterval = opt.interval;
 			var r = getRegion(sc);
@@ -262,7 +274,7 @@
 					setPixel(sc, x, y, r);
 				}
 				if (!bSync && !(y & 7)) {
-					nTime8 = Date.now() - nTimeStart;
+					nTime8 = now() - nTimeStart;
 					if (y === 0 || nTime8 >= nInterval) {
 						oAsyncContext.ys = y + 1;
 						var f = (y - r.ys) / (r.ye - r.ys);
@@ -354,6 +366,7 @@
 			} else {
 				scd = oAsyncContext.scd;
 			}
+			var ySave = oAsyncContext.ys;
 			var opt = getImageOptions(scs);
 			var w = scs.width;
 			var h = scs.height;
@@ -368,7 +381,7 @@
 			var bChr = Ch.red;
 			var bChg = Ch.green;
 			var bChb = Ch.blue;
-			var nTimeStart = Date.now();
+			var nTimeStart = now();
 			var nTime8;
 			var r = getRegion(scs);
 			var nInterval = opt.interval;
@@ -417,7 +430,7 @@
 				}
 				oAsyncContext.xs = 0;
 				if (!bSync && !(y & 7)) {
-					nTime8 = Date.now() - nTimeStart;
+					nTime8 = now() - nTimeStart;
 					if (nTime8 >= nInterval) {
 						nTimeStart += nTime8;
 						oAsyncContext.ys = y + 1;
@@ -427,8 +440,8 @@
 							f: f
 						});
 						requestAnimationFrame(oAsyncContext.resume);
+						console.log(y - ySave);
 						console.timeEnd('convo');
-						
 						return;
 					}
 				}
@@ -634,7 +647,7 @@
 		}
 		
 		function process(oImage, opt) {
-			var nStartTime = Date.now();
+			var nStartTime = now();
 			var $image = $(oImage);
 			$image.data(PLUGIN_NAME + '_busy', true);
 			debug(opt.command, ': starting filter');
@@ -648,7 +661,7 @@
 			function triggerComplete() {
 				var nLeft = $image.queue(BUSY_VAR).length;
 				debug(opt.command, ': complete.' , nLeft , 'filter(s) left');
-				$image.trigger(PLUGIN_NAME + '.complete', {filter: sFilter, n: $image.queue(BUSY_VAR).length, time: Date.now() - nStartTime});
+				$image.trigger(PLUGIN_NAME + '.complete', {filter: sFilter, n: $image.queue(BUSY_VAR).length, time: now() - nStartTime});
 				$image.data(PLUGIN_NAME + '_busy', false);
 				$image.dequeue(BUSY_VAR);
 			}
@@ -837,7 +850,7 @@
 		function main() {
 			var oImage = this;
 			var $image = $(oImage);
-			var bBusy = $image.data(BUSY_VAR);
+			var bBusy = $image.queue(BUSY_VAR).length > 0;
 			debug(oOptions.command, ': queueing filter');
 			$image.queue(BUSY_VAR, function() {
 				process(oImage, oOptions);
